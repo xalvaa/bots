@@ -1,0 +1,85 @@
+from telegram import Update, ReplyKeyboardMarkup, KeyboardButton
+from telegram.ext import Updater, CommandHandler, MessageHandler, Filters, CallbackContext
+
+TOKEN = "8026101501:AAG2oj032H-QotYbYAHnhcOES2niIu43rCo"
+
+# Клавиатура главного меню
+def main_menu_keyboard():
+    return ReplyKeyboardMarkup([
+        [KeyboardButton("📝 Оставить заявку")],
+        [KeyboardButton("ℹ️ Информация о школе"), KeyboardButton("❓ FAQ")]
+    ], resize_keyboard=True)
+
+# Обработчик команды /start
+def start(update: Update, context: CallbackContext):
+    update.message.reply_text(
+        "Добро пожаловать в футбольную школу 'Невские Тигры'! 🐯⚽\n"
+        "Выберите действие:",
+        reply_markup=main_menu_keyboard()
+    )
+
+# Обработчик кнопки "Оставить заявку"
+def application(update: Update, context: CallbackContext):
+    update.message.reply_text(
+        "Чтобы оставить заявку, отправьте:\n"
+        "1. Имя и фамилию ребёнка\n"
+        "2. Возраст\n"
+        "3. Контактный телефон родителя\n\n"
+        "Пример:\n"
+        "Иван Петров, 8 лет, +79111234567"
+    )
+    context.user_data['waiting_for_application'] = True
+
+# Обработчик текстовых сообщений
+def handle_message(update: Update, context: CallbackContext):
+    if context.user_data.get('waiting_for_application'):
+        # Сохраняем заявку (можно добавить запись в файл или БД)
+        application_text = update.message.text
+        with open("applications.txt", "a") as f:
+            f.write(f"{application_text}\n")
+        
+        update.message.reply_text(
+            "✅ Спасибо! Ваша заявка принята.\n"
+            "Мы свяжемся с вами в ближайшее время.",
+            reply_markup=main_menu_keyboard()
+        )
+        context.user_data['waiting_for_application'] = False
+    else:
+        text = update.message.text
+        if text == "ℹ️ Информация о школе":
+            update.message.reply_text(
+                "🏟️ Футбольная школа 'Невские Тигры'\n\n"
+                "📍 Адрес: г. Санкт-Петербург, ул. Спортивная, 1\n"
+                "🕒 График работы: Пн-Пт 9:00-21:00\n"
+                "⚽ Возрастные группы: 5-16 лет\n"
+                "📞 Контакты: +7 (911) 123-45-67\n\n"
+                "Наша школа специализируется на подготовке юных футболистов."
+            )
+        elif text == "❓ FAQ":
+            update.message.reply_text(
+                "❓ Часто задаваемые вопросы:\n\n"
+                "1. С какого возраста принимают? - С 5 лет\n"
+                "2. Какая стоимость занятий? - 3000 руб/мес\n"
+                "3. Нужна ли экипировка? - Да, форма и бутсы\n"
+                "4. Есть ли пробное занятие? - Да, бесплатно"
+            )
+        else:
+            update.message.reply_text(
+                "Я вас не понял. Пожалуйста, используйте кнопки меню.",
+                reply_markup=main_menu_keyboard()
+            )
+
+def main():
+    updater = Updater(TOKEN)
+    dispatcher = updater.dispatcher
+
+    # Обработчики
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(MessageHandler(Filters.regex("^📝 Оставить заявку$"), application))
+    dispatcher.add_handler(MessageHandler(Filters.text & ~Filters.command, handle_message))
+
+    updater.start_polling()
+    updater.idle()
+
+if __name__ == "__main__":
+    main()
